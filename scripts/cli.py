@@ -6,14 +6,18 @@ import gzip
 import io
 import os
 import logging
-import traceback
 from datetime import datetime, timezone
+from pathlib import Path
 
 from fair_mappings_schema.parsing import parse_sssom_tsv, transform_to_fair, load_mapping
 from fair_mappings_schema.scoring import score_instance
 from fair_mappings_schema.schema import get_schema_view
 
 logger = logging.getLogger(__name__)
+
+HERE = Path(__file__).parent.resolve()
+ROOT = HERE.parent.resolve()
+DATA_DIRECTORY = ROOT / "data"
 
 # Shared session with a browser-like User-Agent so that hosts such as
 # GitLab don't reject requests from GitHub Actions runners.
@@ -185,29 +189,32 @@ def _process_transform_registry(registry_path: str) -> list[dict]:
 @click.group()
 def cli():
     """Mapping Registry CLI."""
-    pass
 
 
 @cli.command()
-@click.argument("registry_file", type=click.Path(exists=True))
-@click.argument("output_file", type=click.Path(writable=True))
-@click.option("--log-file", default="data/etl-errors.log",
-              help="Path to write error log")
-def prepare_mapping_registry(registry_file, output_file, log_file):
+@click.argument("registry_file", type=click.Path(exists=True, path_type=Path))
+@click.argument("output_file", type=click.Path(writable=True, path_type=Path))
+@click.option(
+    "--log-file",
+    default=DATA_DIRECTORY / "etl-errors.log",
+    help="Path to write error log",
+    type=Path
+)
+def prepare_mapping_registry(registry_file: Path, output_file: Path, log_file: Path) -> None:
     """
     Fetch SSSOM mapping sets from registries, transform each to a
     MappingSpecification, compute metadata completeness scores, and write JSON.
 
     Non-conformant files are logged and skipped.
     """
-    os.makedirs(os.path.dirname(log_file), exist_ok=True)
+    log_file.parent.mkdir(parents=True, exist_ok=True)
     file_handler = logging.FileHandler(log_file, mode="w")
     file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
     logger.addHandler(file_handler)
     logger.setLevel(logging.INFO)
     logger.info("ETL started at %s", datetime.now(timezone.utc).isoformat())
 
-    with open(registry_file) as f:
+    with registry_file.open() as f:
         main_registry = yaml.safe_load(f)
 
     specifications = []

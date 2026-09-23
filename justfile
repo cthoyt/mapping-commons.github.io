@@ -12,13 +12,13 @@ setup:
 
 # Run the ETL: fetch registries, transform SSSOM metadata to FAIR Mappings Schema
 data: setup
-    uv run python3 scripts/cli.py prepare-mapping-registry \
+    uv run --script scripts/cli.py prepare-mapping-registry \
         mapping-server.yml \
         data/mapping-specifications.json
 
 # Transform a single file (usage: just transform input.yaml sssom output.yaml)
 transform input mapping_type output: setup
-    uv run python3 scripts/cli.py transform-single \
+    uv run --script scripts/cli.py transform-single \
         {{input}} {{mapping_type}} {{output}}
 
 # Validate the generated mapping specifications against the FAIR Mappings Schema
